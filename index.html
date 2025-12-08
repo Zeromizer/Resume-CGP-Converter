@@ -6,7 +6,7 @@
     <title>CGP Resume Converter</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://unpkg.com/docx@8.2.0/build/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         * {
@@ -1004,6 +1004,12 @@ IMPORTANT RULES:
         // Download DOCX
         downloadBtn.addEventListener('click', async () => {
             if (!parsedResume) return;
+
+            // Check if docx library is loaded
+            if (typeof docx === 'undefined') {
+                showError('Document library failed to load. Please refresh the page and try again.');
+                return;
+            }
 
             showLoading('Generating Word document...');
 
