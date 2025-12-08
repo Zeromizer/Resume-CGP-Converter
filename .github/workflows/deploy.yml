@@ -27,7 +27,14 @@ jobs:
 
       - name: Inject API Key
         run: |
+          echo "Before replacement:"
+          grep -o "API_KEY = '.*'" index.html || echo "Pattern not found"
           sed -i "s|__GEMINI_API_KEY__|${{ secrets.GEMINI_API_KEY }}|g" index.html
+          echo "After replacement:"
+          grep -o "API_KEY = '.*'" index.html | head -c 30
+          echo "..."
+          echo "Checking if placeholder still exists:"
+          grep -c "__GEMINI_API_KEY__" index.html && echo "ERROR: Placeholder not replaced!" || echo "OK: Placeholder replaced"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
