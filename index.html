@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CGP Resume Converter</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #CC3300;
+            --primary-dark: #A32900;
+            --secondary: #1a1a2e;
+            --accent: #E8E8E8;
+            --bg: #FAFAFA;
+            --card-bg: #FFFFFF;
+            --text: #1a1a2e;
+            --text-muted: #6B7280;
+            --success: #10B981;
+            --border: #E5E7EB;
+        }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
+        .header { background: linear-gradient(135deg, var(--secondary) 0%, #2d2d4a 100%); padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon { width: 45px; height: 45px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 1.2rem; transform: rotate(-3deg); }
+        .logo-text { color: white; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px; }
+        .logo-text span { color: var(--primary); }
+        .header-subtitle { color: rgba(255,255,255,0.7); font-size: 0.85rem; font-family: 'Space Mono', monospace; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+        .steps { display: flex; justify-content: center; gap: 0; margin-bottom: 2.5rem; }
+        .step { display: flex; align-items: center; gap: 10px; padding: 0.75rem 1.5rem; background: var(--card-bg); border: 2px solid var(--border); position: relative; transition: all 0.3s ease; }
+        .step:first-child { border-radius: 50px 0 0 50px; }
+        .step:last-child { border-radius: 0 50px 50px 0; }
+        .step.active { background: var(--primary); border-color: var(--primary); color: white; }
+        .step.completed { background: var(--success); border-color: var(--success); color: white; }
+        .step-number { width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.85rem; }
+        .step.active .step-number, .step.completed .step-number { background: rgba(255,255,255,0.25); }
+        .step-label { font-weight: 500; font-size: 0.9rem; }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 2rem; box-shadow: 0 4px 25px rgba(0,0,0,0.06); border: 1px solid var(--border); margin-bottom: 1.5rem; }
+        .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 10px; }
+        .card-title-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1rem; }
+        .upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 3rem 2rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%); }
+        .upload-area:hover { border-color: var(--primary); background: linear-gradient(135deg, #fff5f2 0%, #fff 100%); }
+        .upload-area.drag-over { border-color: var(--primary); background: #fff5f2; transform: scale(1.01); }
+        .upload-area.has-file { border-color: var(--success); background: linear-gradient(135deg, #ecfdf5 0%, #fff 100%); }
+        .upload-icon { width: 70px; height: 70px; margin: 0 auto 1.25rem; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; transition: all 0.3s ease; }
+        .upload-area:hover .upload-icon { background: var(--primary); color: white; transform: scale(1.05); }
+        .upload-area.has-file .upload-icon { background: var(--success); color: white; }
+        .upload-text { font-size: 1.1rem; font-weight: 500; margin-bottom: 0.5rem; }
+        .upload-subtext { color: var(--text-muted); font-size: 0.9rem; }
+        .file-name { margin-top: 1rem; padding: 0.75rem 1.25rem; background: var(--accent); border-radius: 8px; font-family: 'Space Mono', monospace; font-size: 0.85rem; display: inline-block; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
+        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        label { font-weight: 500; font-size: 0.9rem; color: var(--text); }
+        input, select { padding: 0.85rem 1rem; border: 2px solid var(--border); border-radius: 10px; font-size: 1rem; font-family: 'DM Sans', sans-serif; transition: all 0.2s ease; background: white; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(204, 51, 0, 0.1); }
+        .btn { padding: 1rem 2rem; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; box-shadow: 0 4px 15px rgba(204, 51, 0, 0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(204, 51, 0, 0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: var(--accent); color: var(--text); }
+        .btn-secondary:hover { background: #d1d5db; }
+        .btn-success { background: linear-gradient(135deg, var(--success) 0%, #059669 100%); color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(16, 185, 129, 0.4); }
+        .actions { display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; }
+        .loading { display: none; flex-direction: column; align-items: center; padding: 3rem; }
+        .loading.active { display: flex; }
+        .spinner { width: 50px; height: 50px; border: 4px solid var(--accent); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { margin-top: 1.25rem; font-weight: 500; color: var(--text-muted); }
+        .preview-section { display: none; }
+        .preview-section.active { display: block; }
+        .preview-content { background: #f8f9fa; border-radius: 12px; padding: 1.5rem; max-height: 500px; overflow-y: auto; font-family: 'Space Mono', monospace; font-size: 0.85rem; line-height: 1.8; border: 1px solid var(--border); }
+        .preview-content h3 { color: var(--primary); margin: 1rem 0 0.5rem; font-family: 'DM Sans', sans-serif; }
+        .preview-content h3:first-child { margin-top: 0; }
+        .success-message { display: none; text-align: center; padding: 3rem; }
+        .success-message.active { display: block; }
+        .success-icon { width: 80px; height: 80px; background: linear-gradient(135deg, var(--success) 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2.5rem; color: white; animation: pop 0.5s ease; }
+        @keyframes pop { 0% { transform: scale(0); } 70% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .success-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .success-subtitle { color: var(--text-muted); margin-bottom: 2rem; }
+        .error-message { background: #FEE2E2; border: 1px solid #FECACA; color: #DC2626; padding: 1rem 1.25rem; border-radius: 10px; margin-bottom: 1.5rem; display: none; }
+        .error-message.active { display: block; }
+        .footer { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem; }
+        .section { display: none; }
+        .section.active { display: block; }
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 1rem; text-align: center; }
+            .steps { flex-direction: column; align-items: center; }
+            .step { width: 100%; max-width: 280px; border-radius: 10px !important; justify-content: center; }
+            .container { padding: 1.5rem 1rem; }
+            .actions { flex-direction: column; }
+            .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">CGP</div>
+            <div>
+                <div class="logo-text">Resume <span>Converter</span></div>
+                <div class="header-subtitle">Powered by AI</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="steps">
+            <div class="step active" id="step1-indicator"><div class="step-number">1</div><div class="step-label">Upload Resume</div></div>
+            <div class="step" id="step2-indicator"><div class="step-number">2</div><div class="step-label">Enter Details</div></div>
+            <div class="step" id="step3-indicator"><div class="step-number">3</div><div class="step-label">Download</div></div>
+        </div>
+
+        <div class="error-message" id="error-message"></div>
+
+        <section class="section active" id="step1">
+            <div class="card">
+                <div class="card-title"><div class="card-title-icon">📄</div>Upload Candidate Resume</div>
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Drop your resume here or click to browse</div>
+                    <div class="upload-subtext">Supports PDF files (Max 10MB)</div>
+                    <div class="file-name" id="file-name" style="display: none;"></div>
+                </div>
+                <input type="file" id="file-input" accept=".pdf" style="display: none;">
+            </div>
+            <div class="actions"><button class="btn btn-primary" id="next-to-step2" disabled>Continue to Details →</button></div>
+        </section>
+
+        <section class="section" id="step2">
+            <div class="card">
+                <div class="card-title"><div class="card-title-icon">👤</div>Candidate Details</div>
+                <div class="form-grid">
+                    <div class="form-group full-width"><label for="candidate-name">Candidate Name *</label><input type="text" id="candidate-name" placeholder="e.g. John Tan Wei Ming" required></div>
+                    <div class="form-group"><label for="nationality">Nationality *</label>
+                        <select id="nationality" required>
+                            <option value="">Select nationality</option>
+                            <option value="Singaporean">Singaporean</option>
+                            <option value="Singapore PR">Singapore PR</option>
+                            <option value="Malaysian">Malaysian</option>
+                            <option value="Chinese">Chinese</option>
+                            <option value="Indian">Indian</option>
+                            <option value="Filipino">Filipino</option>
+                            <option value="Indonesian">Indonesian</option>
+                            <option value="Vietnamese">Vietnamese</option>
+                            <option value="Thai">Thai</option>
+                            <option value="Myanmar">Myanmar</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label for="gender">Gender *</label>
+                        <select id="gender" required>
+                            <option value="">Select gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label for="expected-salary">Expected Salary (SGD) *</label><input type="text" id="expected-salary" placeholder="e.g. 4,000 or 4,000 - 5,000"></div>
+                    <div class="form-group"><label for="notice-period">Notice Period *</label>
+                        <select id="notice-period" required>
+                            <option value="">Select notice period</option>
+                            <option value="Immediate">Immediate</option>
+                            <option value="1 Week">1 Week</option>
+                            <option value="2 Weeks">2 Weeks</option>
+                            <option value="1 Month">1 Month</option>
+                            <option value="2 Months">2 Months</option>
+                            <option value="3 Months">3 Months</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-secondary" id="back-to-step1">← Back</button>
+                <button class="btn btn-primary" id="generate-btn">🚀 Generate CGP Resume</button>
+            </div>
+        </section>
+
+        <div class="loading" id="loading"><div class="spinner"></div><div class="loading-text" id="loading-text">Processing resume with AI...</div></div>
+
+        <section class="section" id="step3">
+            <div class="success-message active"><div class="success-icon">✓</div><div class="success-title">Resume Converted Successfully!</div><div class="success-subtitle">Your CGP-formatted resume is ready to download</div></div>
+            <div class="card preview-section active">
+                <div class="preview-header"><div class="card-title" style="margin-bottom: 0;"><div class="card-title-icon">👁️</div>Preview</div></div>
+                <div class="preview-content" id="preview-content"></div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-secondary" id="start-over">← Convert Another</button>
+                <button class="btn btn-success" id="download-btn">📥 Download .docx</button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer"><p>CGP Resume Converter • Cornerstone Global Partners Pte Ltd</p></footer>
+
+    <script>
+        // PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // State
+        let uploadedFile = null;
+        let extractedText = '';
+        let parsedResume = null;
+        let generatedDocBlob = null;
+
+        // DOM Elements
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const fileName = document.getElementById('file-name');
+        const nextToStep2 = document.getElementById('next-to-step2');
+        const backToStep1 = document.getElementById('back-to-step1');
+        const generateBtn = document.getElementById('generate-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const startOver = document.getElementById('start-over');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loading-text');
+        const errorMessage = document.getElementById('error-message');
+
+        function showStep(stepNum) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`step${stepNum}`).classList.add('active');
+            document.querySelectorAll('.step').forEach((s, i) => {
+                s.classList.remove('active', 'completed');
+                if (i + 1 < stepNum) s.classList.add('completed');
+                if (i + 1 === stepNum) s.classList.add('active');
+            });
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('active');
+            setTimeout(() => errorMessage.classList.remove('active'), 5000);
+        }
+
+        function showLoading(text) {
+            loadingText.textContent = text;
+            loading.classList.add('active');
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        }
+
+        function hideLoading() { loading.classList.remove('active'); }
+
+        // File upload handlers
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('drag-over'); });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
+
+        async function handleFile(file) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) { showError('Please upload a PDF file'); return; }
+            if (file.size > 10 * 1024 * 1024) { showError('File size must be less than 10MB'); return; }
+
+            uploadedFile = file;
+            fileName.textContent = file.name;
+            fileName.style.display = 'inline-block';
+            uploadArea.classList.add('has-file');
+
+            try {
+                showLoading('Extracting text from PDF...');
+                extractedText = await extractPdfText(file);
+                hideLoading();
+                showStep(1);
+                nextToStep2.disabled = false;
+            } catch (error) {
+                hideLoading();
+                showStep(1);
+                showError('Failed to read PDF. Please try another file.');
+                console.error(error);
+            }
+        }
+
+        async function extractPdfText(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            let text = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(item => item.str).join(' ') + '\n';
+            }
+            return text;
+        }
+
+        nextToStep2.addEventListener('click', () => showStep(2));
+        backToStep1.addEventListener('click', () => showStep(1));
+        startOver.addEventListener('click', () => {
+            uploadedFile = null;
+            extractedText = '';
+            parsedResume = null;
+            generatedDocBlob = null;
+            fileInput.value = '';
+            fileName.style.display = 'none';
+            uploadArea.classList.remove('has-file');
+            nextToStep2.disabled = true;
+            document.getElementById('candidate-name').value = '';
+            document.getElementById('nationality').value = '';
+            document.getElementById('gender').value = '';
+            document.getElementById('expected-salary').value = '';
+            document.getElementById('notice-period').value = '';
+            showStep(1);
+        });
+
+        generateBtn.addEventListener('click', async () => {
+            const candidateName = document.getElementById('candidate-name').value.trim();
+            const nationality = document.getElementById('nationality').value;
+            const gender = document.getElementById('gender').value;
+            const expectedSalary = document.getElementById('expected-salary').value.trim();
+            const noticePeriod = document.getElementById('notice-period').value;
+
+            if (!candidateName || !nationality || !gender || !expectedSalary || !noticePeriod) {
+                showError('Please fill in all required fields');
+                return;
+            }
+
+            showLoading('AI is analyzing the resume...');
+
+            try {
+                parsedResume = await parseResumeWithAI(extractedText, { candidateName, nationality, gender, expectedSalary, noticePeriod });
+                
+                showLoading('Generating CGP document...');
+                generatedDocBlob = await generateCGPDocument(parsedResume);
+
+                hideLoading();
+                displayPreview(parsedResume);
+                showStep(3);
+            } catch (error) {
+                hideLoading();
+                showStep(2);
+                showError('Failed to process resume. Please try again.');
+                console.error(error);
+            }
+        });
+
+        async function parseResumeWithAI(resumeText, candidateInfo) {
+            const API_KEY = 'AIzaSyDHm_f-t_jbpeU_KTeqFbKp0mkTdgUwh9Q';
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+
+            const prompt = `You are a resume parser. Extract and structure the following resume into JSON format.
+
+CANDIDATE INFO (use these exact values):
+- Name: ${candidateInfo.candidateName}
+- Nationality: ${candidateInfo.nationality}
+- Gender: ${candidateInfo.gender}
+- Expected Salary: ${candidateInfo.expectedSalary}
+- Notice Period: ${candidateInfo.noticePeriod}
+
+RESUME TEXT:
+${resumeText}
+
+Return ONLY valid JSON (no markdown, no code blocks):
+{
+    "candidateName": "${candidateInfo.candidateName}",
+    "nationality": "${candidateInfo.nationality}",
+    "gender": "${candidateInfo.gender}",
+    "expectedSalary": "${candidateInfo.expectedSalary}",
+    "noticePeriod": "${candidateInfo.noticePeriod}",
+    "education": [{"year": "2023", "qualification": "Degree Name", "institution": "University Name"}],
+    "workExperience": [{"title": "Job Title", "period": "Jan 2022 - Present", "company": "Company Name", "responsibilities": ["Responsibility 1", "Responsibility 2"]}],
+    "languages": ["English", "Mandarin"]
+}
+
+RULES:
+1. Extract ALL work experiences (most recent first)
+2. Extract ALL education entries
+3. Each responsibility should be a complete sentence
+4. Extract languages if mentioned, otherwise default to ["English"]`;
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+                })
+            });
+
+            if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+            const data = await response.json();
+            let jsonStr = data.candidates[0].content.parts[0].text.trim();
+            if (jsonStr.startsWith('```json')) jsonStr = jsonStr.slice(7);
+            if (jsonStr.startsWith('```')) jsonStr = jsonStr.slice(3);
+            if (jsonStr.endsWith('```')) jsonStr = jsonStr.slice(0, -3);
+            return JSON.parse(jsonStr.trim());
+        }
+
+        function displayPreview(data) {
+            const preview = document.getElementById('preview-content');
+            let html = `<h3>📋 Candidate Information</h3>
+<strong>Name:</strong> ${data.candidateName}<br>
+<strong>Nationality:</strong> ${data.nationality}<br>
+<strong>Gender:</strong> ${data.gender}<br>
+<strong>Expected Salary:</strong> ${data.expectedSalary}<br>
+<strong>Notice Period:</strong> ${data.noticePeriod}<br>
+<h3>🎓 Education</h3>`;
+            data.education.forEach(edu => {
+                html += `<strong>${edu.year}</strong> - ${edu.qualification}<br><em>${edu.institution}</em><br><br>`;
+            });
+            html += `<h3>💼 Work Experience</h3>`;
+            data.workExperience.forEach(job => {
+                html += `<strong>${job.title}</strong><br>${job.period}<br><em>${job.company}</em><br>`;
+                job.responsibilities.forEach(resp => { html += `• ${resp}<br>`; });
+                html += `<br>`;
+            });
+            html += `<h3>🌐 Languages</h3>` + data.languages.join(', ');
+            preview.innerHTML = html;
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            if (!generatedDocBlob || !parsedResume) return;
+            const safeFileName = parsedResume.candidateName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+            saveAs(generatedDocBlob, `${safeFileName}_CGP_Format.docx`);
+        });
+
+        // Generate CGP Document by modifying template
+        async function generateCGPDocument(data) {
+            // Fetch the embedded template
+            const templateBase64 = await fetch('template.docx.b64').then(r => r.text()).catch(() => null);
+            
+            if (!templateBase64) {
+                // Fallback: use inline minimal template approach
+                return await generateDocxFromScratch(data);
+            }
+
+            const templateBytes = Uint8Array.from(atob(templateBase64), c => c.charCodeAt(0));
+            const zip = await JSZip.loadAsync(templateBytes);
+
+            // Get document.xml
+            let docXml = await zip.file('word/document.xml').async('string');
+
+            // Replace candidate info placeholders
+            docXml = replaceInXml(docXml, 'Yap Hui Mei, Jovial', data.candidateName);
+            docXml = replaceInXml(docXml, 'Singaporean', data.nationality);
+            docXml = replaceInXml(docXml, '7,500 (Negotiable)', data.expectedSalary);
+            docXml = replaceInXml(docXml, 'Immediate', data.noticePeriod);
+            
+            // Handle split "Female" text
+            docXml = docXml.replace(/>Fem<\/w:t>/g, `>${data.gender}</w:t>`);
+            docXml = docXml.replace(/<w:t>a<\/w:t>/g, '<w:t></w:t>');
+            docXml = docXml.replace(/<w:t xml:space="preserve">le <\/w:t>/g, '<w:t xml:space="preserve"> </w:t>');
+
+            // Replace education
+            docXml = replaceInXml(docXml, '2013', data.education[0]?.year || '');
+            docXml = replaceInXml(docXml, 'Bachelor of Commerce', data.education[0]?.qualification || '');
+            docXml = docXml.replace(/, Double Major in HRM and Tourism and Hospitality/g, '');
+            docXml = replaceInXml(docXml, 'Murdoch University', data.education[0]?.institution || '');
+
+            // Build work experience XML
+            const workExpXml = buildWorkExperienceXml(data.workExperience);
+            
+            // Find and replace work experience section
+            const workExpStart = docXml.indexOf('Country HR');
+            const langStart = docXml.indexOf('LANGUAGE');
+            
+            if (workExpStart > 0 && langStart > workExpStart) {
+                // Find the paragraph containing "Country HR" and extract up to LANGUAGE
+                const beforeWorkExp = docXml.substring(0, findParagraphStart(docXml, workExpStart));
+                const afterLang = docXml.substring(findTableStart(docXml, langStart));
+                docXml = beforeWorkExp + workExpXml + afterLang;
+            }
+
+            // Build languages XML
+            const langXml = buildLanguagesXml(data.languages);
+            
+            // Replace languages section
+            const langTableEnd = docXml.lastIndexOf('</w:tbl>');
+            if (langTableEnd > 0) {
+                const afterLangTable = docXml.substring(langTableEnd + 8);
+                const beforeLangContent = docXml.substring(0, langTableEnd + 8);
+                
+                // Find existing language bullets and replace
+                const existingLangStart = beforeLangContent.lastIndexOf('<w:p');
+                // Simple replacement: find English/Chinese bullets and replace
+                docXml = docXml.replace(/>English<\/w:t>/g, `>${data.languages[0] || 'English'}</w:t>`);
+                if (data.languages.length < 2) {
+                    // Remove Chinese bullet if only one language
+                    docXml = docXml.replace(/<w:p[^>]*>(?:[^<]*<[^>]*>)*[^<]*>Chinese<[^<]*<\/w:p>/g, '');
+                }
+            }
+
+            zip.file('word/document.xml', docXml);
+            return await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        }
+
+        function replaceInXml(xml, oldText, newText) {
+            // Escape special XML characters in newText
+            const escaped = newText
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+            return xml.split(oldText).join(escaped);
+        }
+
+        function findParagraphStart(xml, position) {
+            let pos = position;
+            while (pos > 0 && xml.substring(pos - 5, pos) !== '<w:p ') pos--;
+            return pos - 5;
+        }
+
+        function findTableStart(xml, position) {
+            let pos = position;
+            while (pos > 0 && xml.substring(pos - 7, pos) !== '<w:tbl>') pos--;
+            return pos - 7;
+        }
+
+        function buildWorkExperienceXml(jobs) {
+            let xml = '';
+            jobs.forEach(job => {
+                // Job title paragraph
+                xml += `<w:p><w:pPr><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>${escapeXml(job.title)}</w:t></w:r></w:p>`;
+                // Period
+                xml += `<w:p><w:pPr><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>${escapeXml(job.period)}</w:t></w:r></w:p>`;
+                // Company
+                xml += `<w:p><w:pPr><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>${escapeXml(job.company)}</w:t></w:r></w:p>`;
+                // Responsibilities
+                job.responsibilities.forEach(resp => {
+                    xml += `<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="45"/></w:numPr><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>${escapeXml(resp)}</w:t></w:r></w:p>`;
+                });
+            });
+            return xml;
+        }
+
+        function buildLanguagesXml(languages) {
+            let xml = '';
+            languages.forEach(lang => {
+                xml += `<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="9"/></w:numPr><w:rPr><w:rFonts w:cstheme="minorHAnsi"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/></w:rPr><w:t>${escapeXml(lang)}</w:t></w:r></w:p>`;
+            });
+            return xml;
+        }
+
+        function escapeXml(text) {
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        // Fallback: Generate document from scratch if template not available
+        async function generateDocxFromScratch(data) {
+            // This is a simplified fallback - in production, use the template
+            showError('Template not found. Please ensure template.docx.b64 is in the same folder.');
+            throw new Error('Template not found');
+        }
+    </script>
+</body>
+</html>
