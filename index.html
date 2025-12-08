@@ -343,7 +343,7 @@
 
         async function parseResumeWithAI(resumeText, candidateInfo) {
             const API_KEY = '__GEMINI_API_KEY__';
-            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
 
             const prompt = `You are a resume parser. Extract and structure the following resume into JSON format.
 
@@ -384,7 +384,11 @@ RULES:
                 })
             });
 
-            if (!response.ok) throw new Error(`API error: ${response.status}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('API Error Details:', errorData);
+                throw new Error(`API error: ${response.status} - ${errorData.error?.message || JSON.stringify(errorData)}`);
+            }
 
             const data = await response.json();
             let jsonStr = data.candidates[0].content.parts[0].text.trim();
