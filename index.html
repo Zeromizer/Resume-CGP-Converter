@@ -366,14 +366,15 @@ Return ONLY valid JSON (no markdown, no code blocks):
     "noticePeriod": "${candidateInfo.noticePeriod}",
     "education": [{"year": "2023", "qualification": "Degree Name", "institution": "University Name"}],
     "workExperience": [{"title": "Job Title", "period": "Jan 2022 - Present", "company": "Company Name", "responsibilities": ["Responsibility 1", "Responsibility 2"]}],
-    "languages": ["English", "Mandarin"]
+    "languages": ["English", "Mandarin", "Cantonese"]
 }
 
 RULES:
 1. Extract ALL work experiences (most recent first)
 2. Extract ALL education entries
 3. Each responsibility should be a complete sentence
-4. Extract languages if mentioned, otherwise default to ["English"]`;
+4. Extract ALL languages mentioned individually (e.g., "English, Mandarin, Cantonese" should be ["English", "Mandarin", "Cantonese"], not consolidated into "Chinese")
+5. If no languages mentioned, default to ["English"]`;
 
             const response = await fetch(API_URL, {
                 method: 'POST',
@@ -475,20 +476,31 @@ RULES:
 
             // Build languages XML
             const langXml = buildLanguagesXml(data.languages);
-            
-            // Replace languages section
-            const langTableEnd = docXml.lastIndexOf('</w:tbl>');
-            if (langTableEnd > 0) {
-                const afterLangTable = docXml.substring(langTableEnd + 8);
-                const beforeLangContent = docXml.substring(0, langTableEnd + 8);
-                
-                // Find existing language bullets and replace
-                const existingLangStart = beforeLangContent.lastIndexOf('<w:p');
-                // Simple replacement: find English/Chinese bullets and replace
-                docXml = docXml.replace(/>English<\/w:t>/g, `>${data.languages[0] || 'English'}</w:t>`);
-                if (data.languages.length < 2) {
-                    // Remove Chinese bullet if only one language
-                    docXml = docXml.replace(/<w:p[^>]*>(?:[^<]*<[^>]*>)*[^<]*>Chinese<[^<]*<\/w:p>/g, '');
+
+            // Replace languages section - find and replace the existing language bullets
+            // Find the LANGUAGE section marker and replace the bullets after it
+            const langSectionMatch = docXml.match(/>LANGUAGE<\/w:t>/);
+            if (langSectionMatch) {
+                // Find the position after LANGUAGE header
+                const langPos = docXml.indexOf('>LANGUAGE</w:t>');
+                const afterLang = docXml.substring(langPos);
+
+                // Find the English bullet (first language item)
+                const englishMatch = afterLang.match(/<w:p[^>]*>(?:[^<]*<[^>]*>)*[^<]*>English<\/w:t>[^<]*<\/w:r><\/w:p>/);
+                if (englishMatch) {
+                    const englishStart = docXml.indexOf(englishMatch[0], langPos);
+
+                    // Find Chinese bullet (second language item)
+                    const chineseMatch = afterLang.match(/<w:p[^>]*>(?:[^<]*<[^>]*>)*[^<]*>Chinese<\/w:t>[^<]*<\/w:r><\/w:p>/);
+
+                    if (chineseMatch) {
+                        const chineseEnd = docXml.indexOf(chineseMatch[0], langPos) + chineseMatch[0].length;
+                        // Replace both English and Chinese bullets with our dynamic languages
+                        docXml = docXml.substring(0, englishStart) + langXml + docXml.substring(chineseEnd);
+                    } else {
+                        // Only English exists, replace it
+                        docXml = docXml.substring(0, englishStart) + langXml + docXml.substring(englishStart + englishMatch[0].length);
+                    }
                 }
             }
 
