@@ -1030,7 +1030,7 @@ IMPORTANT RULES:
 
         // Create CGP Document
         function createCGPDocument(data) {
-            const { Document, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign } = docx;
+            const { Document, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign, Header, Footer, PageNumber, ExternalHyperlink, TabStopType, TabStopPosition } = docx;
 
             // Border styles
             const noBorder = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
@@ -1060,6 +1060,148 @@ IMPORTANT RULES:
                                         spacing: { before: 60, after: 60 },
                                         children: [new TextRun({ text: title, bold: true, size: 22, font: "Calibri", color: "FFFFFF" })]
                                     })]
+                                })
+                            ]
+                        })
+                    ]
+                });
+            }
+
+            // Create CGP header with logo and company info
+            function createHeader() {
+                return new Header({
+                    children: [
+                        new Table({
+                            columnWidths: [3500, 5860],
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        // Left cell - Logo
+                                        new TableCell({
+                                            borders: noBorders,
+                                            width: { size: 3500, type: WidthType.DXA },
+                                            verticalAlign: VerticalAlign.TOP,
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({ text: "◄ ", font: "Calibri", size: 36, color: "CC3300", bold: true }),
+                                                        new TextRun({ text: "CGP ", font: "Calibri", size: 28, color: "CC3300", bold: true }),
+                                                        new TextRun({ text: "Personnel", font: "Calibri", size: 28, color: "333333" })
+                                                    ]
+                                                })
+                                            ]
+                                        }),
+                                        // Right cell - Company info
+                                        new TableCell({
+                                            borders: noBorders,
+                                            width: { size: 5860, type: WidthType.DXA },
+                                            verticalAlign: VerticalAlign.TOP,
+                                            children: [
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [new TextRun({ text: "Cornerstone Global Partners Pte Ltd", font: "Calibri", size: 18, color: "CC3300", bold: true })]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Prepared by: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "Go Ai Wei", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Company Registration Number: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "201622755N", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "EA Licence: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "19C9859", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Registration No: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "R1440661", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Address: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "79 Anson Road, #17-01", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Telephone: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "+65 90033765", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    children: [
+                                                        new TextRun({ text: "Website:    ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new ExternalHyperlink({
+                                                            children: [new TextRun({ text: "https://www.cgp2o.com/", font: "Calibri", size: 16, color: "0563C1", underline: { type: "single" } })],
+                                                            link: "https://www.cgp2o.com/"
+                                                        })
+                                                    ]
+                                                })
+                                            ]
+                                        })
+                                    ]
+                                })
+                            ]
+                        })
+                    ]
+                });
+            }
+
+            // Create CGP footer with Chinese text and website
+            function createFooter() {
+                return new Footer({
+                    children: [
+                        new Table({
+                            columnWidths: [4680, 4680],
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        // Left cell - Chinese text
+                                        new TableCell({
+                                            borders: noBorders,
+                                            width: { size: 4680, type: WidthType.DXA },
+                                            children: [
+                                                new Paragraph({
+                                                    alignment: AlignmentType.LEFT,
+                                                    children: [new TextRun({ text: "上海仕隆人力資源有限公司", font: "Calibri", size: 18, color: "666666" })]
+                                                })
+                                            ]
+                                        }),
+                                        // Right cell - Website
+                                        new TableCell({
+                                            borders: noBorders,
+                                            width: { size: 4680, type: WidthType.DXA },
+                                            children: [
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    children: [new TextRun({ text: "www.cgp02o.com", font: "Calibri", size: 18, color: "666666" })]
+                                                })
+                                            ]
+                                        })
+                                    ]
                                 })
                             ]
                         })
@@ -1173,7 +1315,15 @@ IMPORTANT RULES:
             return new Document({
                 sections: [{
                     properties: {
-                        page: { margin: { top: 1440, right: 1080, bottom: 1080, left: 1080 } }
+                        page: {
+                            margin: { top: 2400, right: 1080, bottom: 1200, left: 1080 }
+                        }
+                    },
+                    headers: {
+                        default: createHeader()
+                    },
+                    footers: {
+                        default: createFooter()
                     },
                     children: children
                 }]
