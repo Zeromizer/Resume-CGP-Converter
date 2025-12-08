@@ -6,8 +6,10 @@
     <title>CGP Resume Converter</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- Template processing libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.4/dist/pizzip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.42.0/build/docxtemplater.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -502,6 +504,136 @@
             display: block;
         }
 
+        /* Template Management */
+        .template-section {
+            background: var(--card-bg);
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .template-section.has-template {
+            border-color: var(--success);
+            border-style: solid;
+        }
+
+        .template-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .template-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .template-status {
+            font-size: 0.85rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: var(--accent);
+            color: var(--text-muted);
+        }
+
+        .template-status.active {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .template-info {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .template-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-danger {
+            background: #FEE2E2;
+            color: #DC2626;
+            border: none;
+        }
+
+        .btn-danger:hover {
+            background: #FECACA;
+        }
+
+        .template-filename {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            background: var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            margin-top: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .template-filename .remove-btn {
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+        .template-filename .remove-btn:hover {
+            color: #DC2626;
+        }
+
+        .collapsible-header {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .collapsible-header::after {
+            content: '▼';
+            font-size: 0.75rem;
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible-header.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .collapsible-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .collapsible-content.collapsed {
+            max-height: 0;
+            margin: 0;
+            padding: 0;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .header {
@@ -566,6 +698,39 @@
 
         <!-- Error Message -->
         <div class="error-message" id="error-message"></div>
+
+        <!-- Template Management Section -->
+        <div class="template-section" id="template-section">
+            <div class="template-header">
+                <div class="template-title collapsible-header" id="template-toggle">
+                    📋 CGP Template
+                </div>
+                <div class="template-status" id="template-status">No Template</div>
+            </div>
+            <div class="collapsible-content" id="template-content">
+                <div class="template-info">
+                    Upload a Word document (.docx) template with proper header and footer formatting.
+                    Use placeholders in your template:<br>
+                    <code>{candidateName}</code>, <code>{nationality}</code>, <code>{gender}</code>, <code>{expectedSalary}</code>, <code>{noticePeriod}</code><br>
+                    <code>{#education}{year} {qualification} - {institution}{/education}</code><br>
+                    <code>{#workExperience}{title} | {period} | {company}{#responsibilities}{.}{/responsibilities}{/workExperience}</code><br>
+                    <code>{#skills}{.}{/skills}</code>, <code>{#languages}{.}{/languages}</code>
+                </div>
+                <div class="template-actions">
+                    <button class="btn btn-outline btn-small" id="upload-template-btn">
+                        📤 Upload Template
+                    </button>
+                    <button class="btn btn-small btn-secondary" id="download-sample-btn">
+                        📥 Download Sample Template
+                    </button>
+                </div>
+                <input type="file" id="template-input" accept=".docx" style="display: none;">
+                <div class="template-filename" id="template-filename" style="display: none;">
+                    <span id="template-name-text"></span>
+                    <span class="remove-btn" id="remove-template" title="Remove template">×</span>
+                </div>
+            </div>
+        </div>
 
         <!-- Step 1: Upload -->
         <section class="section active" id="step1">
@@ -704,6 +869,8 @@
         let uploadedFile = null;
         let extractedText = '';
         let parsedResume = null;
+        let templateData = null;  // Stores the uploaded template as ArrayBuffer
+        let templateName = null;  // Stores the template filename
 
         // DOM Elements
         const uploadArea = document.getElementById('upload-area');
@@ -745,6 +912,246 @@
         function hideLoading() {
             loading.classList.remove('active');
         }
+
+        // Template Management
+        const templateSection = document.getElementById('template-section');
+        const templateStatus = document.getElementById('template-status');
+        const templateToggle = document.getElementById('template-toggle');
+        const templateContent = document.getElementById('template-content');
+        const uploadTemplateBtn = document.getElementById('upload-template-btn');
+        const downloadSampleBtn = document.getElementById('download-sample-btn');
+        const templateInput = document.getElementById('template-input');
+        const templateFilename = document.getElementById('template-filename');
+        const templateNameText = document.getElementById('template-name-text');
+        const removeTemplate = document.getElementById('remove-template');
+
+        // Initialize template from localStorage
+        function initTemplate() {
+            const savedTemplate = localStorage.getItem('cgpTemplate');
+            const savedTemplateName = localStorage.getItem('cgpTemplateName');
+            if (savedTemplate && savedTemplateName) {
+                // Convert base64 back to ArrayBuffer
+                const binaryString = atob(savedTemplate);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                templateData = bytes.buffer;
+                templateName = savedTemplateName;
+                updateTemplateUI(true);
+            }
+        }
+
+        function updateTemplateUI(hasTemplate) {
+            if (hasTemplate) {
+                templateSection.classList.add('has-template');
+                templateStatus.textContent = 'Template Loaded';
+                templateStatus.classList.add('active');
+                templateFilename.style.display = 'inline-flex';
+                templateNameText.textContent = templateName;
+            } else {
+                templateSection.classList.remove('has-template');
+                templateStatus.textContent = 'No Template';
+                templateStatus.classList.remove('active');
+                templateFilename.style.display = 'none';
+                templateNameText.textContent = '';
+            }
+        }
+
+        // Collapsible toggle
+        templateToggle.addEventListener('click', () => {
+            templateToggle.classList.toggle('collapsed');
+            templateContent.classList.toggle('collapsed');
+        });
+
+        // Upload template
+        uploadTemplateBtn.addEventListener('click', () => templateInput.click());
+
+        templateInput.addEventListener('change', async (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (!file.name.toLowerCase().endsWith('.docx')) {
+                    showError('Please upload a .docx file');
+                    return;
+                }
+                try {
+                    templateData = await file.arrayBuffer();
+                    templateName = file.name;
+
+                    // Save to localStorage as base64
+                    const bytes = new Uint8Array(templateData);
+                    let binary = '';
+                    for (let i = 0; i < bytes.length; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    localStorage.setItem('cgpTemplate', btoa(binary));
+                    localStorage.setItem('cgpTemplateName', templateName);
+
+                    updateTemplateUI(true);
+                } catch (error) {
+                    showError('Failed to load template file');
+                    console.error(error);
+                }
+            }
+        });
+
+        // Remove template
+        removeTemplate.addEventListener('click', () => {
+            templateData = null;
+            templateName = null;
+            localStorage.removeItem('cgpTemplate');
+            localStorage.removeItem('cgpTemplateName');
+            templateInput.value = '';
+            updateTemplateUI(false);
+        });
+
+        // Download sample template
+        downloadSampleBtn.addEventListener('click', async () => {
+            showLoading('Generating sample template...');
+            try {
+                const blob = await createSampleTemplate();
+                saveAs(blob, 'CGP_Template_Sample.docx');
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                showError('Failed to create sample template');
+                console.error(error);
+            }
+        });
+
+        // Create a sample template with placeholders
+        async function createSampleTemplate() {
+            // Fetch a minimal docx template and modify it with docxtemplater placeholders
+            // For now, we'll create a simple template using the existing structure
+            const content = `
+                <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                    <w:body>
+                        <w:p><w:r><w:t>Candidate Name: {candidateName}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>Nationality: {nationality}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>Gender: {gender}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>Expected Salary: {expectedSalary}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>Notice Period: {noticePeriod}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t></w:t></w:r></w:p>
+                        <w:p><w:r><w:t>EDUCATION</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>{#education}{year} - {qualification}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>{institution}{/education}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t></w:t></w:r></w:p>
+                        <w:p><w:r><w:t>WORKING EXPERIENCE</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>{#workExperience}{title}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>{period}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>{company}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>{#responsibilities}• {.}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>{/responsibilities}{/workExperience}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t></w:t></w:r></w:p>
+                        <w:p><w:r><w:t>SKILLS</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>{#skills}• {.}{/skills}</w:t></w:r></w:p>
+                        <w:p><w:r><w:t></w:t></w:r></w:p>
+                        <w:p><w:r><w:t>LANGUAGES</w:t></w:r></w:p>
+                        <w:p><w:r><w:t>{#languages}• {.}{/languages}</w:t></w:r></w:p>
+                    </w:body>
+                </w:document>
+            `;
+
+            // Create a minimal DOCX file structure
+            const zip = new PizZip();
+
+            // Add required files for a valid DOCX
+            zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+    <Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>
+    <Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>
+</Types>`);
+
+            zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+
+            zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>
+    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>
+</Relationships>`);
+
+            // Main document with placeholders
+            zip.file('word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+    <w:body>
+        <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Candidate Name: {candidateName}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>Nationality: {nationality}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>Gender: {gender}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>Expected Salary: {expectedSalary}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>Notice Period: {noticePeriod}</w:t></w:r></w:p>
+        <w:p><w:r><w:t></w:t></w:r></w:p>
+        <w:p><w:pPr><w:shd w:val="clear" w:fill="CC3300"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>EDUCATION</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{#education}{year} - {qualification}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{institution}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{/education}</w:t></w:r></w:p>
+        <w:p><w:r><w:t></w:t></w:r></w:p>
+        <w:p><w:pPr><w:shd w:val="clear" w:fill="CC3300"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>WORKING EXPERIENCE</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{#workExperience}</w:t></w:r></w:p>
+        <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>{title}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{period}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{company}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{#responsibilities}</w:t></w:r></w:p>
+        <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>{.}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{/responsibilities}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{/workExperience}</w:t></w:r></w:p>
+        <w:p><w:r><w:t></w:t></w:r></w:p>
+        <w:p><w:pPr><w:shd w:val="clear" w:fill="CC3300"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>SKILLS</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{#skills}</w:t></w:r></w:p>
+        <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>{.}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{/skills}</w:t></w:r></w:p>
+        <w:p><w:r><w:t></w:t></w:r></w:p>
+        <w:p><w:pPr><w:shd w:val="clear" w:fill="CC3300"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>LANGUAGES</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{#languages}</w:t></w:r></w:p>
+        <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>{.}</w:t></w:r></w:p>
+        <w:p><w:r><w:t>{/languages}</w:t></w:r></w:p>
+        <w:sectPr>
+            <w:headerReference w:type="default" r:id="rId1"/>
+            <w:footerReference w:type="default" r:id="rId2"/>
+            <w:pgSz w:w="12240" w:h="15840"/>
+            <w:pgMar w:top="2016" w:right="1008" w:bottom="1008" w:left="1008" w:header="720" w:footer="720"/>
+        </w:sectPr>
+    </w:body>
+</w:document>`);
+
+            // Header with CGP branding placeholder
+            zip.file('word/header1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:p>
+        <w:pPr><w:jc w:val="right"/></w:pPr>
+        <w:r><w:rPr><w:b/><w:color w:val="CC3300"/></w:rPr><w:t>Cornerstone Global Partners Pte Ltd</w:t></w:r>
+    </w:p>
+    <w:p>
+        <w:pPr><w:jc w:val="right"/></w:pPr>
+        <w:r><w:rPr><w:color w:val="CC3300"/><w:sz w:val="18"/></w:rPr><w:t>Prepared by: </w:t></w:r>
+        <w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>Go Ai Wei</w:t></w:r>
+    </w:p>
+    <w:p>
+        <w:pPr><w:jc w:val="right"/></w:pPr>
+        <w:r><w:rPr><w:color w:val="CC3300"/><w:sz w:val="18"/></w:rPr><w:t>EA Licence: </w:t></w:r>
+        <w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>19C9859</w:t></w:r>
+    </w:p>
+</w:hdr>`);
+
+            // Footer
+            zip.file('word/footer1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:p>
+        <w:pPr><w:jc w:val="center"/></w:pPr>
+        <w:r><w:rPr><w:color w:val="808080"/><w:sz w:val="18"/></w:rPr><w:t>上海仕隆人力資源有限公司 | www.cgpo2o.com</w:t></w:r>
+    </w:p>
+</w:ftr>`);
+
+            return zip.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        }
+
+        // Initialize template on page load
+        initTemplate();
 
         // File upload handlers
         uploadArea.addEventListener('click', () => fileInput.click());
@@ -1052,16 +1459,16 @@ IMPORTANT RULES:
         downloadBtn.addEventListener('click', async () => {
             if (!parsedResume) return;
 
-            if (typeof docx === 'undefined') {
-                showError('Document library failed to load. Please refresh the page and try again.');
+            // Check if template is loaded
+            if (!templateData) {
+                showError('Please upload a CGP template first. Click "Download Sample Template" to get started.');
                 return;
             }
 
             showLoading('Generating Word document...');
 
             try {
-                const doc = createCGPDocument(parsedResume);
-                const blob = await docx.Packer.toBlob(doc);
+                const blob = await generateFromTemplate(parsedResume);
                 const safeFileName = parsedResume.candidateName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
                 saveAs(blob, `${safeFileName}_CGP_Format.docx`);
                 hideLoading();
@@ -1069,327 +1476,49 @@ IMPORTANT RULES:
             } catch (error) {
                 hideLoading();
                 showStep(3);
-                showError('Failed to generate document. Please try again.');
+                showError('Failed to generate document. Check your template has correct placeholders.');
                 console.error(error);
             }
         });
 
-        // Create CGP Document with proper header and footer
-        function createCGPDocument(data) {
-            const { 
-                Document, Paragraph, TextRun, Table, TableRow, TableCell, 
-                AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign,
-                Header, Footer, ImageRun, ExternalHyperlink, HeadingLevel,
-                convertInchesToTwip, NumberFormat, PageNumber
-            } = docx;
+        // Generate document from template using docxtemplater
+        async function generateFromTemplate(data) {
+            // Load the template
+            const zip = new PizZip(templateData);
 
-            // Border styles
-            const noBorder = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
-            const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
-
-            // Helper function for bullet points with proper formatting
-            function bulletPoint(text) {
-                return new Paragraph({
-                    bullet: { level: 0 },
-                    spacing: { after: 100, line: 276 },
-                    indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) },
-                    children: [new TextRun({ text: text, size: 22, font: "Calibri" })]
-                });
-            }
-
-            // Section header with orange/red background
-            function sectionHeader(title) {
-                return new Table({
-                    width: { size: 100, type: WidthType.PERCENTAGE },
-                    columnWidths: [10000],
-                    rows: [
-                        new TableRow({
-                            children: [
-                                new TableCell({
-                                    borders: noBorders,
-                                    shading: { fill: "CC3300", type: ShadingType.CLEAR },
-                                    children: [new Paragraph({
-                                        spacing: { before: 40, after: 40 },
-                                        indent: { left: 100 },
-                                        children: [new TextRun({ text: title + " ", bold: true, size: 22, font: "Calibri", color: "FFFFFF" })]
-                                    })]
-                                })
-                            ]
-                        })
-                    ]
-                });
-            }
-
-            // Create info row for candidate details
-            function createInfoRow(label, value) {
-                return new TableRow({
-                    children: [
-                        new TableCell({
-                            borders: noBorders,
-                            width: { size: 2200, type: WidthType.DXA },
-                            children: [new Paragraph({
-                                children: [new TextRun({ text: label, bold: true, size: 22, font: "Calibri" })]
-                            })]
-                        }),
-                        new TableCell({
-                            borders: noBorders,
-                            width: { size: 7000, type: WidthType.DXA },
-                            children: [new Paragraph({
-                                children: [
-                                    new TextRun({ text: ": ", bold: true, size: 22, font: "Calibri" }),
-                                    new TextRun({ text: value, bold: true, size: 22, font: "Calibri" })
-                                ]
-                            })]
-                        })
-                    ]
-                });
-            }
-
-            // Create the header with logo and company info
-            function createDocHeader() {
-                return new Header({
-                    children: [
-                        new Table({
-                            width: { size: 100, type: WidthType.PERCENTAGE },
-                            columnWidths: [4000, 6000],
-                            rows: [
-                                new TableRow({
-                                    children: [
-                                        // Left cell - Logo image
-                                        new TableCell({
-                                            borders: noBorders,
-                                            verticalAlign: VerticalAlign.CENTER,
-                                            children: [
-                                                new Paragraph({
-                                                    children: [
-                                                        new ImageRun({
-                                                            data: Uint8Array.from(atob(CGP_LOGO_BASE64), c => c.charCodeAt(0)),
-                                                            transformation: {
-                                                                width: 170,
-                                                                height: 28
-                                                            },
-                                                            type: "jpg"
-                                                        })
-                                                    ]
-                                                })
-                                            ]
-                                        }),
-                                        // Right cell - Company info
-                                        new TableCell({
-                                            borders: noBorders,
-                                            verticalAlign: VerticalAlign.TOP,
-                                            children: [
-                                                new Paragraph({
-                                                    alignment: AlignmentType.RIGHT,
-                                                    spacing: { after: 20 },
-                                                    children: [new TextRun({ text: "Cornerstone Global Partners Pte Ltd", font: "Calibri", size: 18, color: "CC3300", bold: true })]
-                                                }),
-                                                new Paragraph({
-                                                    alignment: AlignmentType.RIGHT,
-                                                    spacing: { after: 20 },
-                                                    children: [
-                                                        new TextRun({ text: "Prepared by: ", font: "Calibri", size: 16, color: "CC3300" }),
-                                                        new TextRun({ text: "Go Ai Wei", font: "Calibri", size: 16, color: "333333" })
-                                                    ]
-                                                }),
-                                                new Paragraph({
-                                                    alignment: AlignmentType.RIGHT,
-                                                    spacing: { after: 20 },
-                                                    children: [
-                                                        new TextRun({ text: "Company Registration Number: ", font: "Calibri", size: 16, color: "CC3300" }),
-                                                        new TextRun({ text: "201622755N", font: "Calibri", size: 16, color: "333333" })
-                                                    ]
-                                                }),
-                                                new Paragraph({
-                                                    alignment: AlignmentType.RIGHT,
-                                                    spacing: { after: 20 },
-                                                    children: [
-                                                        new TextRun({ text: "EA Licence: ", font: "Calibri", size: 16, color: "CC3300" }),
-                                                        new TextRun({ text: "19C9859", font: "Calibri", size: 16, color: "333333" })
-                                                    ]
-                                                }),
-                                                new Paragraph({
-                                                    alignment: AlignmentType.RIGHT,
-                                                    spacing: { after: 20 },
-                                                    children: [
-                                                        new TextRun({ text: "Registration No: ", font: "Calibri", size: 16, color: "CC3300" }),
-                                                        new TextRun({ text: "R1440661", font: "Calibri", size: 16, color: "333333" })
-                                                    ]
-                                                }),
-                                                new Paragraph({
-                                                    alignment: AlignmentType.RIGHT,
-                                                    spacing: { after: 20 },
-                                                    children: [
-                                                        new TextRun({ text: "Address: ", font: "Calibri", size: 16, color: "CC3300" }),
-                                                        new TextRun({ text: "79 Anson Road, #17-01", font: "Calibri", size: 16, color: "333333" })
-                                                    ]
-                                                }),
-                                                new Paragraph({
-                                                    alignment: AlignmentType.RIGHT,
-                                                    spacing: { after: 20 },
-                                                    children: [
-                                                        new TextRun({ text: "Telephone: ", font: "Calibri", size: 16, color: "CC3300" }),
-                                                        new TextRun({ text: "+65 90033765", font: "Calibri", size: 16, color: "333333" })
-                                                    ]
-                                                }),
-                                                new Paragraph({
-                                                    alignment: AlignmentType.RIGHT,
-                                                    spacing: { after: 20 },
-                                                    children: [
-                                                        new TextRun({ text: "Website: ", font: "Calibri", size: 16, color: "CC3300" }),
-                                                        new ExternalHyperlink({
-                                                            children: [new TextRun({ text: "https://www.cgpo2o.com/", font: "Calibri", size: 16, color: "0563C1", underline: {} })],
-                                                            link: "https://www.cgpo2o.com/"
-                                                        })
-                                                    ]
-                                                })
-                                            ]
-                                        })
-                                    ]
-                                })
-                            ]
-                        }),
-                        new Paragraph({ spacing: { after: 200 }, children: [] })
-                    ]
-                });
-            }
-
-            // Create footer
-            function createDocFooter() {
-                return new Footer({
-                    children: [
-                        new Table({
-                            width: { size: 100, type: WidthType.PERCENTAGE },
-                            columnWidths: [5000, 5000],
-                            rows: [
-                                new TableRow({
-                                    children: [
-                                        new TableCell({
-                                            borders: noBorders,
-                                            children: [
-                                                new Paragraph({
-                                                    alignment: AlignmentType.LEFT,
-                                                    children: [new TextRun({ text: "上海仕隆人力資源有限公司", font: "SimSun", size: 18, color: "808080" })]
-                                                })
-                                            ]
-                                        }),
-                                        new TableCell({
-                                            borders: noBorders,
-                                            children: [
-                                                new Paragraph({
-                                                    alignment: AlignmentType.RIGHT,
-                                                    children: [new TextRun({ text: "www.cgpo2o.com", font: "Calibri", size: 18, color: "808080" })]
-                                                })
-                                            ]
-                                        })
-                                    ]
-                                })
-                            ]
-                        })
-                    ]
-                });
-            }
-
-            // Build document content
-            const children = [];
-
-            // Candidate Info Table
-            children.push(new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                columnWidths: [2200, 7000],
-                rows: [
-                    createInfoRow("Candidate Name", data.candidateName),
-                    createInfoRow("Nationality", data.nationality),
-                    createInfoRow("Gender", data.gender),
-                    createInfoRow("Expected Salary", data.expectedSalary),
-                    createInfoRow("Notice Period", data.noticePeriod),
-                ]
-            }));
-
-            // Spacing
-            children.push(new Paragraph({ spacing: { before: 200, after: 100 }, children: [] }));
-
-            // Education Section
-            children.push(sectionHeader("EDUCATION"));
-            data.education.forEach(edu => {
-                children.push(new Paragraph({
-                    spacing: { before: 120, after: 40 },
-                    children: [
-                        new TextRun({ text: edu.year + " ", bold: true, size: 22, font: "Calibri" }),
-                        new TextRun({ text: edu.qualification, bold: true, size: 22, font: "Calibri" })
-                    ]
-                }));
-                children.push(new Paragraph({
-                    indent: { left: 720 },
-                    spacing: { after: 80 },
-                    children: [new TextRun({ text: edu.institution, bold: true, size: 22, font: "Calibri" })]
-                }));
+            // Create docxtemplater instance
+            const doc = new window.docxtemplater(zip, {
+                paragraphLoop: true,
+                linebreaks: true,
+                delimiters: {
+                    start: '{',
+                    end: '}'
+                }
             });
 
-            // Spacing
-            children.push(new Paragraph({ spacing: { before: 100 }, children: [] }));
-
-            // Work Experience Section
-            children.push(sectionHeader("WORKING EXPERIENCE"));
-            data.workExperience.forEach(job => {
-                // Job title
-                children.push(new Paragraph({
-                    spacing: { before: 160, after: 40 },
-                    children: [new TextRun({ text: job.title, bold: true, size: 22, font: "Calibri" })]
-                }));
-                // Period
-                children.push(new Paragraph({
-                    spacing: { after: 40 },
-                    children: [new TextRun({ text: job.period, bold: true, size: 22, font: "Calibri" })]
-                }));
-                // Company
-                children.push(new Paragraph({
-                    spacing: { after: 80 },
-                    children: [new TextRun({ text: job.company, bold: true, size: 22, font: "Calibri" })]
-                }));
-                // Responsibilities
-                job.responsibilities.forEach(resp => {
-                    children.push(bulletPoint(resp));
-                });
+            // Set the template data
+            doc.setData({
+                candidateName: data.candidateName || '',
+                nationality: data.nationality || '',
+                gender: data.gender || '',
+                expectedSalary: data.expectedSalary || '',
+                noticePeriod: data.noticePeriod || '',
+                education: data.education || [],
+                workExperience: data.workExperience || [],
+                skills: data.skills || [],
+                languages: data.languages || []
             });
 
-            // Skills Section (if present)
-            if (data.skills && data.skills.length > 0) {
-                children.push(new Paragraph({ spacing: { before: 160 }, children: [] }));
-                children.push(sectionHeader("SKILLS"));
-                data.skills.forEach(skill => {
-                    children.push(bulletPoint(skill));
-                });
-            }
+            // Render the document
+            doc.render();
 
-            // Language Section
-            children.push(new Paragraph({ spacing: { before: 160 }, children: [] }));
-            children.push(sectionHeader("LANGUAGE"));
-            data.languages.forEach(lang => {
-                children.push(bulletPoint(lang));
+            // Generate output
+            const output = doc.getZip().generate({
+                type: 'blob',
+                mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
             });
 
-            return new Document({
-                sections: [{
-                    properties: {
-                        page: {
-                            margin: { 
-                                top: convertInchesToTwip(1.4),
-                                right: convertInchesToTwip(0.7),
-                                bottom: convertInchesToTwip(0.7),
-                                left: convertInchesToTwip(0.7)
-                            }
-                        }
-                    },
-                    headers: {
-                        default: createDocHeader()
-                    },
-                    footers: {
-                        default: createDocFooter()
-                    },
-                    children: children
-                }]
-            });
+            return output;
         }
     </script>
 </body>
