@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CGP Resume Converter</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #CC3300;
+            --primary-dark: #A32900;
+            --secondary: #1a1a2e;
+            --accent: #E8E8E8;
+            --bg: #FAFAFA;
+            --card-bg: #FFFFFF;
+            --text: #1a1a2e;
+            --text-muted: #6B7280;
+            --success: #10B981;
+            --border: #E5E7EB;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--secondary) 0%, #2d2d4a 100%);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            background: var(--primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 1.2rem;
+            transform: rotate(-3deg);
+        }
+
+        .logo-text {
+            color: white;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-text span {
+            color: var(--primary);
+        }
+
+        .header-subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.85rem;
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem;
+        }
+
+        /* Steps Indicator */
+        .steps {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 2.5rem;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0.75rem 1.5rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .step:first-child {
+            border-radius: 50px 0 0 50px;
+        }
+
+        .step:last-child {
+            border-radius: 0 50px 50px 0;
+        }
+
+        .step.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .step.completed {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .step.active .step-number,
+        .step.completed .step-number {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .step-label {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1rem;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #fff5f2 0%, #fff 100%);
+        }
+
+        .upload-area.drag-over {
+            border-color: var(--primary);
+            background: #fff5f2;
+            transform: scale(1.01);
+        }
+
+        .upload-area.has-file {
+            border-color: var(--success);
+            background: linear-gradient(135deg, #ecfdf5 0%, #fff 100%);
+        }
+
+        .upload-icon {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 1.25rem;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover .upload-icon {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .upload-area.has-file .upload-icon {
+            background: var(--success);
+            color: white;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .file-name {
+            margin-top: 1rem;
+            padding: 0.75rem 1.25rem;
+            background: var(--accent);
+            border-radius: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        /* Form Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+        }
+
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+
+        input, select {
+            padding: 0.85rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(204, 51, 0, 0.1);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(204, 51, 0, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(204, 51, 0, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--accent);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding: 3rem;
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--accent);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 1.25rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* Preview Section */
+        .preview-section {
+            display: none;
+        }
+
+        .preview-section.active {
+            display: block;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .preview-content {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            border: 1px solid var(--border);
+        }
+
+        .preview-content h3 {
+            color: var(--primary);
+            margin: 1rem 0 0.5rem;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .preview-content h3:first-child {
+            margin-top: 0;
+        }
+
+        /* Success Message */
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .success-message.active {
+            display: block;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+            color: white;
+            animation: pop 0.5s ease;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0); }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .success-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .success-subtitle {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        /* Error */
+        .error-message {
+            background: #FEE2E2;
+            border: 1px solid #FECACA;
+            color: #DC2626;
+            padding: 1rem 1.25rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Hide sections */
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .steps {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .step {
+                width: 100%;
+                max-width: 280px;
+                border-radius: 10px !important;
+                justify-content: center;
+            }
+
+            .container {
+                padding: 1.5rem 1rem;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">CGP</div>
+            <div>
+                <div class="logo-text">Resume <span>Converter</span></div>
+                <div class="header-subtitle">Powered by AI</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Steps Indicator -->
+        <div class="steps">
+            <div class="step active" id="step1-indicator">
+                <div class="step-number">1</div>
+                <div class="step-label">Upload Resume</div>
+            </div>
+            <div class="step" id="step2-indicator">
+                <div class="step-number">2</div>
+                <div class="step-label">Enter Details</div>
+            </div>
+            <div class="step" id="step3-indicator">
+                <div class="step-number">3</div>
+                <div class="step-label">Download</div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-message" id="error-message"></div>
+
+        <!-- Step 1: Upload -->
+        <section class="section active" id="step1">
+            <div class="card">
+                <div class="card-title">
+                    <div class="card-title-icon">📄</div>
+                    Upload Candidate Resume
+                </div>
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Drop your resume here or click to browse</div>
+                    <div class="upload-subtext">Supports PDF files (Max 10MB)</div>
+                    <div class="file-name" id="file-name" style="display: none;"></div>
+                </div>
+                <input type="file" id="file-input" accept=".pdf" style="display: none;">
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" id="next-to-step2" disabled>
+                    Continue to Details →
+                </button>
+            </div>
+        </section>
+
+        <!-- Step 2: Candidate Details -->
+        <section class="section" id="step2">
+            <div class="card">
+                <div class="card-title">
+                    <div class="card-title-icon">👤</div>
+                    Candidate Details
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="candidate-name">Candidate Name *</label>
+                        <input type="text" id="candidate-name" placeholder="e.g. John Tan Wei Ming" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nationality">Nationality *</label>
+                        <select id="nationality" required>
+                            <option value="">Select nationality</option>
+                            <option value="Singaporean">Singaporean</option>
+                            <option value="Singapore PR">Singapore PR</option>
+                            <option value="Malaysian">Malaysian</option>
+                            <option value="Chinese">Chinese</option>
+                            <option value="Indian">Indian</option>
+                            <option value="Filipino">Filipino</option>
+                            <option value="Indonesian">Indonesian</option>
+                            <option value="Vietnamese">Vietnamese</option>
+                            <option value="Thai">Thai</option>
+                            <option value="Myanmar">Myanmar</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="gender">Gender *</label>
+                        <select id="gender" required>
+                            <option value="">Select gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="expected-salary">Expected Salary (SGD) *</label>
+                        <input type="text" id="expected-salary" placeholder="e.g. 4,000 or 4,000 - 5,000">
+                    </div>
+                    <div class="form-group">
+                        <label for="notice-period">Notice Period *</label>
+                        <select id="notice-period" required>
+                            <option value="">Select notice period</option>
+                            <option value="Immediate">Immediate</option>
+                            <option value="1 Week">1 Week</option>
+                            <option value="2 Weeks">2 Weeks</option>
+                            <option value="1 Month">1 Month</option>
+                            <option value="2 Months">2 Months</option>
+                            <option value="3 Months">3 Months</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-secondary" id="back-to-step1">← Back</button>
+                <button class="btn btn-primary" id="generate-btn">
+                    🚀 Generate CGP Resume
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div class="loading-text" id="loading-text">Processing resume with AI...</div>
+        </div>
+
+        <!-- Step 3: Preview & Download -->
+        <section class="section" id="step3">
+            <div class="success-message active">
+                <div class="success-icon">✓</div>
+                <div class="success-title">Resume Converted Successfully!</div>
+                <div class="success-subtitle">Your CGP-formatted resume is ready to download</div>
+            </div>
+
+            <div class="card preview-section active">
+                <div class="preview-header">
+                    <div class="card-title" style="margin-bottom: 0;">
+                        <div class="card-title-icon">👁️</div>
+                        Preview
+                    </div>
+                </div>
+                <div class="preview-content" id="preview-content">
+                    <!-- Preview will be inserted here -->
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-secondary" id="start-over">← Convert Another</button>
+                <button class="btn btn-success" id="download-btn">
+                    📥 Download .docx
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>CGP Resume Converter • Cornerstone Global Partners Pte Ltd</p>
+    </footer>
+
+    <script>
+        // PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // CGP Logo as base64
+        const CGP_LOGO_BASE64 = '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';
+
+        // State
+        let uploadedFile = null;
+        let extractedText = '';
+        let parsedResume = null;
+
+        // DOM Elements
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const fileName = document.getElementById('file-name');
+        const nextToStep2 = document.getElementById('next-to-step2');
+        const backToStep1 = document.getElementById('back-to-step1');
+        const generateBtn = document.getElementById('generate-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const startOver = document.getElementById('start-over');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loading-text');
+        const errorMessage = document.getElementById('error-message');
+
+        // Step navigation
+        function showStep(stepNum) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`step${stepNum}`).classList.add('active');
+
+            document.querySelectorAll('.step').forEach((s, i) => {
+                s.classList.remove('active', 'completed');
+                if (i + 1 < stepNum) s.classList.add('completed');
+                if (i + 1 === stepNum) s.classList.add('active');
+            });
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('active');
+            setTimeout(() => errorMessage.classList.remove('active'), 5000);
+        }
+
+        function showLoading(text) {
+            loadingText.textContent = text;
+            loading.classList.add('active');
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        }
+
+        function hideLoading() {
+            loading.classList.remove('active');
+        }
+
+        // File upload handlers
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFile(files[0]);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFile(e.target.files[0]);
+        });
+
+        async function handleFile(file) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                showError('Please upload a PDF file');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                showError('File size must be less than 10MB');
+                return;
+            }
+
+            uploadedFile = file;
+            fileName.textContent = file.name;
+            fileName.style.display = 'inline-block';
+            uploadArea.classList.add('has-file');
+            
+            // Extract text from PDF
+            try {
+                showLoading('Extracting text from PDF...');
+                extractedText = await extractPdfText(file);
+                hideLoading();
+                showStep(1);
+                nextToStep2.disabled = false;
+            } catch (error) {
+                hideLoading();
+                showStep(1);
+                showError('Failed to read PDF. Please try another file.');
+                console.error(error);
+            }
+        }
+
+        async function extractPdfText(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            let text = '';
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                const pageText = content.items.map(item => item.str).join(' ');
+                text += pageText + '\n';
+            }
+            
+            return text;
+        }
+
+        // Navigation
+        nextToStep2.addEventListener('click', () => showStep(2));
+        backToStep1.addEventListener('click', () => showStep(1));
+        startOver.addEventListener('click', () => {
+            uploadedFile = null;
+            extractedText = '';
+            parsedResume = null;
+            fileInput.value = '';
+            fileName.style.display = 'none';
+            uploadArea.classList.remove('has-file');
+            nextToStep2.disabled = true;
+            document.getElementById('candidate-name').value = '';
+            document.getElementById('nationality').value = '';
+            document.getElementById('gender').value = '';
+            document.getElementById('expected-salary').value = '';
+            document.getElementById('notice-period').value = '';
+            showStep(1);
+        });
+
+        // Generate Resume
+        generateBtn.addEventListener('click', async () => {
+            const candidateName = document.getElementById('candidate-name').value.trim();
+            const nationality = document.getElementById('nationality').value;
+            const gender = document.getElementById('gender').value;
+            const expectedSalary = document.getElementById('expected-salary').value.trim();
+            const noticePeriod = document.getElementById('notice-period').value;
+
+            if (!candidateName || !nationality || !gender || !expectedSalary || !noticePeriod) {
+                showError('Please fill in all required fields');
+                return;
+            }
+
+            showLoading('AI is analyzing the resume...');
+
+            try {
+                parsedResume = await parseResumeWithAI(extractedText, {
+                    candidateName,
+                    nationality,
+                    gender,
+                    expectedSalary,
+                    noticePeriod
+                });
+
+                hideLoading();
+                displayPreview(parsedResume);
+                showStep(3);
+            } catch (error) {
+                hideLoading();
+                showStep(2);
+                showError('Failed to process resume. Please try again.');
+                console.error(error);
+            }
+        });
+
+        // Parse resume with Gemini AI
+        async function parseResumeWithAI(resumeText, candidateInfo) {
+            const API_KEY = 'AIzaSyDHm_f-t_jbpeU_KTeqFbKp0mkTdgUwh9Q';
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+
+            const prompt = `You are a resume parser. Extract and structure the following resume into a JSON format for a recruitment agency template.
+
+CANDIDATE INFO (use these exact values):
+- Name: ${candidateInfo.candidateName}
+- Nationality: ${candidateInfo.nationality}
+- Gender: ${candidateInfo.gender}
+- Expected Salary: ${candidateInfo.expectedSalary}
+- Notice Period: ${candidateInfo.noticePeriod}
+
+RESUME TEXT:
+${resumeText}
+
+Return ONLY valid JSON in this exact format (no markdown, no code blocks, just pure JSON):
+{
+    "candidateName": "${candidateInfo.candidateName}",
+    "nationality": "${candidateInfo.nationality}",
+    "gender": "${candidateInfo.gender}",
+    "expectedSalary": "${candidateInfo.expectedSalary}",
+    "noticePeriod": "${candidateInfo.noticePeriod}",
+    "education": [
+        {
+            "year": "2023",
+            "qualification": "Bachelor of Science in Computer Science",
+            "institution": "National University of Singapore"
+        }
+    ],
+    "workExperience": [
+        {
+            "title": "Software Engineer",
+            "period": "January 2022 - Present",
+            "company": "ABC Company Pte Ltd",
+            "responsibilities": [
+                "Developed web applications using React and Node.js",
+                "Collaborated with cross-functional teams"
+            ]
+        }
+    ],
+    "skills": ["JavaScript", "Python", "SQL"],
+    "languages": ["English", "Mandarin"]
+}
+
+IMPORTANT RULES:
+1. Extract ALL work experiences from the resume, maintaining chronological order (most recent first)
+2. Extract ALL education entries
+3. Each responsibility should be a complete, professional sentence
+4. If skills section exists, extract them. If not, infer key skills from work experience
+5. Extract languages if mentioned, otherwise default to ["English"]
+6. Return ONLY the JSON object, no other text`;
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.1,
+                        maxOutputTokens: 8192,
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const text = data.candidates[0].content.parts[0].text;
+            
+            // Clean up the response - remove markdown code blocks if present
+            let jsonStr = text.trim();
+            if (jsonStr.startsWith('```json')) {
+                jsonStr = jsonStr.slice(7);
+            }
+            if (jsonStr.startsWith('```')) {
+                jsonStr = jsonStr.slice(3);
+            }
+            if (jsonStr.endsWith('```')) {
+                jsonStr = jsonStr.slice(0, -3);
+            }
+            jsonStr = jsonStr.trim();
+
+            return JSON.parse(jsonStr);
+        }
+
+        // Display preview
+        function displayPreview(data) {
+            const preview = document.getElementById('preview-content');
+            
+            let html = `<h3>📋 Candidate Information</h3>
+<strong>Name:</strong> ${data.candidateName}<br>
+<strong>Nationality:</strong> ${data.nationality}<br>
+<strong>Gender:</strong> ${data.gender}<br>
+<strong>Expected Salary:</strong> ${data.expectedSalary}<br>
+<strong>Notice Period:</strong> ${data.noticePeriod}<br>
+
+<h3>🎓 Education</h3>`;
+            
+            data.education.forEach(edu => {
+                html += `<strong>${edu.year}</strong> - ${edu.qualification}<br>`;
+                html += `<em>${edu.institution}</em><br><br>`;
+            });
+
+            html += `<h3>💼 Work Experience</h3>`;
+            data.workExperience.forEach(job => {
+                html += `<strong>${job.title}</strong><br>`;
+                html += `${job.period}<br>`;
+                html += `<em>${job.company}</em><br>`;
+                job.responsibilities.forEach(resp => {
+                    html += `• ${resp}<br>`;
+                });
+                html += `<br>`;
+            });
+
+            if (data.skills && data.skills.length > 0) {
+                html += `<h3>🛠️ Skills</h3>`;
+                html += data.skills.join(', ') + '<br>';
+            }
+
+            html += `<h3>🌐 Languages</h3>`;
+            html += data.languages.join(', ');
+
+            preview.innerHTML = html;
+        }
+
+        // Download DOCX
+        downloadBtn.addEventListener('click', async () => {
+            if (!parsedResume) return;
+
+            if (typeof docx === 'undefined') {
+                showError('Document library failed to load. Please refresh the page and try again.');
+                return;
+            }
+
+            showLoading('Generating Word document...');
+
+            try {
+                const doc = createCGPDocument(parsedResume);
+                const blob = await docx.Packer.toBlob(doc);
+                const safeFileName = parsedResume.candidateName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+                saveAs(blob, `${safeFileName}_CGP_Format.docx`);
+                hideLoading();
+                showStep(3);
+            } catch (error) {
+                hideLoading();
+                showStep(3);
+                showError('Failed to generate document. Please try again.');
+                console.error(error);
+            }
+        });
+
+        // Create CGP Document with proper header and footer
+        function createCGPDocument(data) {
+            const { 
+                Document, Paragraph, TextRun, Table, TableRow, TableCell, 
+                AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign,
+                Header, Footer, ImageRun, ExternalHyperlink, HeadingLevel,
+                convertInchesToTwip, NumberFormat, PageNumber
+            } = docx;
+
+            // Border styles
+            const noBorder = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
+            const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+
+            // Helper function for bullet points with proper formatting
+            function bulletPoint(text) {
+                return new Paragraph({
+                    bullet: { level: 0 },
+                    spacing: { after: 100, line: 276 },
+                    indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) },
+                    children: [new TextRun({ text: text, size: 22, font: "Calibri" })]
+                });
+            }
+
+            // Section header with orange/red background
+            function sectionHeader(title) {
+                return new Table({
+                    width: { size: 100, type: WidthType.PERCENTAGE },
+                    columnWidths: [10000],
+                    rows: [
+                        new TableRow({
+                            children: [
+                                new TableCell({
+                                    borders: noBorders,
+                                    shading: { fill: "CC3300", type: ShadingType.CLEAR },
+                                    children: [new Paragraph({
+                                        spacing: { before: 40, after: 40 },
+                                        indent: { left: 100 },
+                                        children: [new TextRun({ text: title + " ", bold: true, size: 22, font: "Calibri", color: "FFFFFF" })]
+                                    })]
+                                })
+                            ]
+                        })
+                    ]
+                });
+            }
+
+            // Create info row for candidate details
+            function createInfoRow(label, value) {
+                return new TableRow({
+                    children: [
+                        new TableCell({
+                            borders: noBorders,
+                            width: { size: 2200, type: WidthType.DXA },
+                            children: [new Paragraph({
+                                children: [new TextRun({ text: label, bold: true, size: 22, font: "Calibri" })]
+                            })]
+                        }),
+                        new TableCell({
+                            borders: noBorders,
+                            width: { size: 7000, type: WidthType.DXA },
+                            children: [new Paragraph({
+                                children: [
+                                    new TextRun({ text: ": ", bold: true, size: 22, font: "Calibri" }),
+                                    new TextRun({ text: value, bold: true, size: 22, font: "Calibri" })
+                                ]
+                            })]
+                        })
+                    ]
+                });
+            }
+
+            // Create the header with logo and company info
+            function createDocHeader() {
+                return new Header({
+                    children: [
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            columnWidths: [4000, 6000],
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        // Left cell - Logo image
+                                        new TableCell({
+                                            borders: noBorders,
+                                            verticalAlign: VerticalAlign.CENTER,
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new ImageRun({
+                                                            data: Uint8Array.from(atob(CGP_LOGO_BASE64), c => c.charCodeAt(0)),
+                                                            transformation: {
+                                                                width: 170,
+                                                                height: 28
+                                                            },
+                                                            type: "jpg"
+                                                        })
+                                                    ]
+                                                })
+                                            ]
+                                        }),
+                                        // Right cell - Company info
+                                        new TableCell({
+                                            borders: noBorders,
+                                            verticalAlign: VerticalAlign.TOP,
+                                            children: [
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [new TextRun({ text: "Cornerstone Global Partners Pte Ltd", font: "Calibri", size: 18, color: "CC3300", bold: true })]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Prepared by: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "Go Ai Wei", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Company Registration Number: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "201622755N", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "EA Licence: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "19C9859", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Registration No: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "R1440661", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Address: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "79 Anson Road, #17-01", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Telephone: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new TextRun({ text: "+65 90033765", font: "Calibri", size: 16, color: "333333" })
+                                                    ]
+                                                }),
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    spacing: { after: 20 },
+                                                    children: [
+                                                        new TextRun({ text: "Website: ", font: "Calibri", size: 16, color: "CC3300" }),
+                                                        new ExternalHyperlink({
+                                                            children: [new TextRun({ text: "https://www.cgpo2o.com/", font: "Calibri", size: 16, color: "0563C1", underline: {} })],
+                                                            link: "https://www.cgpo2o.com/"
+                                                        })
+                                                    ]
+                                                })
+                                            ]
+                                        })
+                                    ]
+                                })
+                            ]
+                        }),
+                        new Paragraph({ spacing: { after: 200 }, children: [] })
+                    ]
+                });
+            }
+
+            // Create footer
+            function createDocFooter() {
+                return new Footer({
+                    children: [
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            columnWidths: [5000, 5000],
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            borders: noBorders,
+                                            children: [
+                                                new Paragraph({
+                                                    alignment: AlignmentType.LEFT,
+                                                    children: [new TextRun({ text: "上海仕隆人力資源有限公司", font: "SimSun", size: 18, color: "808080" })]
+                                                })
+                                            ]
+                                        }),
+                                        new TableCell({
+                                            borders: noBorders,
+                                            children: [
+                                                new Paragraph({
+                                                    alignment: AlignmentType.RIGHT,
+                                                    children: [new TextRun({ text: "www.cgpo2o.com", font: "Calibri", size: 18, color: "808080" })]
+                                                })
+                                            ]
+                                        })
+                                    ]
+                                })
+                            ]
+                        })
+                    ]
+                });
+            }
+
+            // Build document content
+            const children = [];
+
+            // Candidate Info Table
+            children.push(new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                columnWidths: [2200, 7000],
+                rows: [
+                    createInfoRow("Candidate Name", data.candidateName),
+                    createInfoRow("Nationality", data.nationality),
+                    createInfoRow("Gender", data.gender),
+                    createInfoRow("Expected Salary", data.expectedSalary),
+                    createInfoRow("Notice Period", data.noticePeriod),
+                ]
+            }));
+
+            // Spacing
+            children.push(new Paragraph({ spacing: { before: 200, after: 100 }, children: [] }));
+
+            // Education Section
+            children.push(sectionHeader("EDUCATION"));
+            data.education.forEach(edu => {
+                children.push(new Paragraph({
+                    spacing: { before: 120, after: 40 },
+                    children: [
+                        new TextRun({ text: edu.year + " ", bold: true, size: 22, font: "Calibri" }),
+                        new TextRun({ text: edu.qualification, bold: true, size: 22, font: "Calibri" })
+                    ]
+                }));
+                children.push(new Paragraph({
+                    indent: { left: 720 },
+                    spacing: { after: 80 },
+                    children: [new TextRun({ text: edu.institution, bold: true, size: 22, font: "Calibri" })]
+                }));
+            });
+
+            // Spacing
+            children.push(new Paragraph({ spacing: { before: 100 }, children: [] }));
+
+            // Work Experience Section
+            children.push(sectionHeader("WORKING EXPERIENCE"));
+            data.workExperience.forEach(job => {
+                // Job title
+                children.push(new Paragraph({
+                    spacing: { before: 160, after: 40 },
+                    children: [new TextRun({ text: job.title, bold: true, size: 22, font: "Calibri" })]
+                }));
+                // Period
+                children.push(new Paragraph({
+                    spacing: { after: 40 },
+                    children: [new TextRun({ text: job.period, bold: true, size: 22, font: "Calibri" })]
+                }));
+                // Company
+                children.push(new Paragraph({
+                    spacing: { after: 80 },
+                    children: [new TextRun({ text: job.company, bold: true, size: 22, font: "Calibri" })]
+                }));
+                // Responsibilities
+                job.responsibilities.forEach(resp => {
+                    children.push(bulletPoint(resp));
+                });
+            });
+
+            // Skills Section (if present)
+            if (data.skills && data.skills.length > 0) {
+                children.push(new Paragraph({ spacing: { before: 160 }, children: [] }));
+                children.push(sectionHeader("SKILLS"));
+                data.skills.forEach(skill => {
+                    children.push(bulletPoint(skill));
+                });
+            }
+
+            // Language Section
+            children.push(new Paragraph({ spacing: { before: 160 }, children: [] }));
+            children.push(sectionHeader("LANGUAGE"));
+            data.languages.forEach(lang => {
+                children.push(bulletPoint(lang));
+            });
+
+            return new Document({
+                sections: [{
+                    properties: {
+                        page: {
+                            margin: { 
+                                top: convertInchesToTwip(1.4),
+                                right: convertInchesToTwip(0.7),
+                                bottom: convertInchesToTwip(0.7),
+                                left: convertInchesToTwip(0.7)
+                            }
+                        }
+                    },
+                    headers: {
+                        default: createDocHeader()
+                    },
+                    footers: {
+                        default: createDocFooter()
+                    },
+                    children: children
+                }]
+            });
+        }
+    </script>
+</body>
+</html>
