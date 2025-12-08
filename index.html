@@ -947,7 +947,7 @@ IMPORTANT RULES:
 
             const data = await response.json();
             const text = data.candidates[0].content.parts[0].text;
-            
+
             // Clean up the response - remove markdown code blocks if present
             let jsonStr = text.trim();
             if (jsonStr.startsWith('```json')) {
@@ -961,7 +961,51 @@ IMPORTANT RULES:
             }
             jsonStr = jsonStr.trim();
 
-            return JSON.parse(jsonStr);
+            // Fix common JSON issues from AI responses
+            // Replace unescaped newlines inside strings with escaped newlines
+            jsonStr = fixJsonString(jsonStr);
+
+            try {
+                return JSON.parse(jsonStr);
+            } catch (parseError) {
+                console.error('JSON Parse Error:', parseError);
+                console.error('Raw JSON string:', jsonStr);
+                throw new Error('Failed to parse AI response as JSON');
+            }
+        }
+
+        // Function to fix common JSON issues from AI responses
+        function fixJsonString(str) {
+            // This function fixes unescaped characters inside JSON string values
+            let result = '';
+            let inString = false;
+            let i = 0;
+
+            while (i < str.length) {
+                const char = str[i];
+                const nextChar = str[i + 1];
+
+                if (char === '"' && (i === 0 || str[i - 1] !== '\\')) {
+                    inString = !inString;
+                    result += char;
+                } else if (inString) {
+                    // Inside a string, escape problematic characters
+                    if (char === '\n') {
+                        result += '\\n';
+                    } else if (char === '\r') {
+                        result += '\\r';
+                    } else if (char === '\t') {
+                        result += '\\t';
+                    } else {
+                        result += char;
+                    }
+                } else {
+                    result += char;
+                }
+                i++;
+            }
+
+            return result;
         }
 
         // Display preview
