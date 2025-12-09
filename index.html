@@ -457,7 +457,7 @@ RULES:
             // Replace education
             docXml = replaceInXml(docXml, '2013', data.education[0]?.year || '');
             docXml = replaceInXml(docXml, 'Bachelor of Commerce', data.education[0]?.qualification || '');
-            docXml = docXml.replace(/, Double Major in HRM and Tourism and Hospitality/g, '');
+            docXml = docXml.replace(/,? ?Double Major in HRM and Tourism and Hospitality ?/g, '');
             docXml = replaceInXml(docXml, 'Murdoch University', data.education[0]?.institution || '');
 
             // Build work experience XML
